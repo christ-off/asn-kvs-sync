@@ -48,8 +48,8 @@ Resources:
         DailySchedule:
           Type: Schedule
           Properties:
-            Schedule: cron(0 4 * * ? *)
-            Description: Sync the ASN list daily at 04:00 UTC
+            Schedule: cron(0 4 ? * MON *)
+            Description: Sync the ASN list weekly, Monday 04:00 UTC
 
 Outputs:
   KeyValueStoreArn:

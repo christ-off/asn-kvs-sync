@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-AWS SAM application (scaffold only: template, placeholder handler, tests; sync logic not implemented): a daily Lambda that syncs the full public ASN → category list (≈121k ASNs, quantcdn `asn-info`; categories `isp`, `hosting`, `business`, `education_research`, `government_admin`, none) into a CloudFront KeyValueStore. The CloudFront Function in `../cloudfront-function-filter-traffic/` will read it with one `kvs.get(asn)` per request (deferred).
+AWS SAM application (scaffold only: template, placeholder handler, tests; sync logic not implemented): a weekly Lambda that syncs the full public ASN → category list (≈126k ASNs, 115k with a category, from `ipverse/as-metadata` `as.json`, CC0, formerly `asn-info`; categories `isp`, `hosting`, `business`, `education_research`, `government_admin`, none) into a CloudFront KeyValueStore. The CloudFront Function in `../cloudfront-function-filter-traffic/` will read it with one `kvs.get(asn)` per request (deferred).
 
 The job only populates the KVS. It does not read CloudFront logs, classify observed ASNs, propose block lists or decide any policy; the policy lives in the function.
 
