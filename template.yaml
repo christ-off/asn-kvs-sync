@@ -7,8 +7,8 @@ Description: >
 Globals:
   Function:
     Runtime: nodejs22.x
-    Timeout: 300
-    MemorySize: 512
+    Timeout: 900
+    MemorySize: 2048
 
 Resources:
   AsnKeyValueStore:
@@ -28,7 +28,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Handler: handler.handler
-      CodeUri: src/
+      CodeUri: .
       Description: Sync the full ASN -> category list into the CloudFront KeyValueStore
       Environment:
         Variables:
@@ -50,6 +50,16 @@ Resources:
           Properties:
             Schedule: cron(0 4 ? * MON *)
             Description: Sync the ASN list weekly, Monday 04:00 UTC
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Format: esm
+        Target: es2022
+        Sourcemap: false
+        EntryPoints:
+          - src/handler.mjs
+        OutExtension:
+          - .js=.mjs
 
 Outputs:
   KeyValueStoreArn:

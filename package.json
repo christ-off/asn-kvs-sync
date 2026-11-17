@@ -9,5 +9,10 @@
   "devDependencies": {
     "@vitest/coverage-v8": "^5.1.0",
     "vitest": "^5.1.0"
+  },
+  "dependencies": {
+    "@aws-sdk/client-cloudfront-keyvaluestore": "^3.1171.0",
+    "@aws-sdk/signature-v4a": "^3.1138.0",
+    "esbuild": "^0.28.2"
   }
 }
