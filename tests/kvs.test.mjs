@@ -9,6 +9,7 @@ describe("listAll", () => {
     const items = await listAll({ send }, "arn");
     expect([...items]).toEqual([["1", "h"], ["2", "i"]]);
     expect(send).toHaveBeenCalledTimes(2);
+    expect(send.mock.calls[0][0].input.MaxResults).toBe(50);
   });
 
   it("handles an empty store", async () => {

@@ -2,7 +2,7 @@
 
 Weekly AWS SAM job (Node 22 Lambda, Monday 04:00 UTC) that syncs the full ASN → category list from [`ipverse/as-metadata`](https://github.com/ipverse/as-metadata) (`as.json`, CC0) into a CloudFront KeyValueStore read by [`cloudfront-function-filter-traffic`](../cloudfront-function-filter-traffic/).
 
-Each key is an ASN (`24940`), each value its category: `isp`, `hosting`, `business`, `education_research` or `government_admin`. ASNs without a category are not stored. A value starting with `!` (e.g. `!hosting`) is a manual override that the sync never touches.
+Only the ASNs the filter allows are stored (`isp` and `education_research`, ~34.4k keys): each key is an ASN (`3215`), each value its category. A missing key means the function blocks. The store is fully managed by the sync (keys not in the source are deleted).
 
 See `../ASN blocking — consolidated plan.md` for the plan and `CLAUDE.md` for the design.
 
@@ -18,7 +18,7 @@ sam deploy
 
 ## Run it manually
 
-The first run loads about 115k keys in ~2,300 batches of 50, so it takes a while: use `--cli-read-timeout 0`.
+The first run loads about 34.4k keys in ~690 batches of 50 (about 5–8 min): use `--cli-read-timeout 0`.
 
 ```bash
 STACK=asn-kvs-sync
@@ -44,7 +44,7 @@ aws logs tail "/aws/lambda/$FUNCTION" --region eu-west-3 --since 15m --follow
 ```bash
 KVS=$(sam list stack-outputs --stack-name $STACK --region eu-west-3 --output json | jq -r '.[] | select(.OutputKey=="KeyValueStoreArn") | .OutputValue')
 
-aws cloudfront-keyvaluestore describe-key-value-store --kvs-arn "$KVS"   # ItemCount ≈ 115k, size ≈ 1.5 MB (limit 5 MB)
-aws cloudfront-keyvaluestore get-key --kvs-arn "$KVS" --key 24940        # hosting
-aws cloudfront-keyvaluestore get-key --kvs-arn "$KVS" --key 60653        # business
+aws cloudfront-keyvaluestore describe-key-value-store --kvs-arn "$KVS"   # ItemCount ≈ 34.4k, size ≈ 0.5 MB (limit 5 MB)
+aws cloudfront-keyvaluestore get-key --kvs-arn "$KVS" --key 3215    # isp
+aws cloudfront-keyvaluestore get-key --kvs-arn "$KVS" --key 24940   # ResourceNotFound: hosting is not stored (= blocked)
 ```

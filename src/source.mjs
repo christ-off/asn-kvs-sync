@@ -1,12 +1,16 @@
 export const SOURCE_URL = "https://raw.githubusercontent.com/ipverse/as-metadata/master/as.json";
 
-// Stored as-is (readable in the store, ~1.5 MB of the 5 MB KVS limit).
+// Categories published by the source.
 export const CATEGORIES = new Set(["isp", "hosting", "business", "education_research", "government_admin"]);
 
+// The filter function allows only these; a missing key means "block". Keeping only
+// them keeps the store small (~34k keys) so listing and loading it fit in one run.
+export const STORED_CATEGORIES = new Set(["isp", "education_research"]);
+
 /**
- * Map the upstream as.json entries to { asn: category }. ASNs without a category are
- * left out. Categories missing from CATEGORIES are skipped and counted so a
- * new upstream category is visible in the logs instead of silently dropped.
+ * Map the upstream as.json entries to { asn: category } for STORED_CATEGORIES only.
+ * Categories missing from CATEGORIES are counted so a new upstream category is
+ * visible in the logs instead of silently ignored.
  */
 export function toCategoryMap(entries) {
   const map = new Map();
@@ -14,9 +18,9 @@ export function toCategoryMap(entries) {
   for (const entry of entries) {
     const category = entry.metadata?.category;
     if (!category) continue;
-    if (CATEGORIES.has(category)) {
+    if (STORED_CATEGORIES.has(category)) {
       map.set(String(entry.asn), category);
-    } else {
+    } else if (!CATEGORIES.has(category)) {
       unknown.set(category, (unknown.get(category) ?? 0) + 1);
     }
   }

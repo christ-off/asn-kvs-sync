@@ -20,14 +20,14 @@ describe("handler", () => {
   beforeEach(() => vi.clearAllMocks());
 
   it("writes the diff and reports counts", async () => {
-    fetchEntries.mockResolvedValue([entry(1, "hosting"), entry(2, "isp"), entry(3, "business")]);
-    listAll.mockResolvedValue(new Map([["1", "hosting"], ["2", "business"], ["9", "isp"]]));
+    fetchEntries.mockResolvedValue([entry(1, "isp"), entry(2, "isp"), entry(3, "education_research"), entry(4, "hosting")]);
+    listAll.mockResolvedValue(new Map([["1", "isp"], ["2", "education_research"], ["9", "isp"]]));
     applyChanges.mockResolvedValue(2);
 
     const summary = await handler();
 
     expect(applyChanges).toHaveBeenCalledWith(expect.anything(), undefined, {
-      puts: [{ Key: "2", Value: "isp" }, { Key: "3", Value: "business" }],
+      puts: [{ Key: "2", Value: "isp" }, { Key: "3", Value: "education_research" }],
       deletes: [{ Key: "9" }],
     });
     expect(summary).toEqual({ source: 3, store: 3, added: 1, changed: 1, removed: 1, batches: 2 });
@@ -41,8 +41,8 @@ describe("handler", () => {
   });
 
   it("aborts without writing when the source is far smaller than the store", async () => {
-    fetchEntries.mockResolvedValue([entry(1, "hosting")]);
-    listAll.mockResolvedValue(new Map(Array.from({ length: 100 }, (_, i) => [String(i), "h"])));
+    fetchEntries.mockResolvedValue([entry(1, "isp")]);
+    listAll.mockResolvedValue(new Map(Array.from({ length: 100 }, (_, i) => [String(i), "isp"])));
     await expect(handler()).rejects.toThrow("Guardrail");
     expect(applyChanges).not.toHaveBeenCalled();
   });

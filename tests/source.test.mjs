@@ -2,14 +2,17 @@ import { describe, it, expect, vi } from "vitest";
 import { toCategoryMap, fetchEntries } from "../src/source.mjs";
 
 describe("toCategoryMap", () => {
-  it("keeps the category name and skips uncategorised ASNs", () => {
+  it("keeps only isp and education_research, with the category name", () => {
     const { map, unknown } = toCategoryMap([
       { asn: 24940, metadata: { category: "hosting" } },
       { asn: 60653, metadata: { category: "business" } },
+      { asn: 3215, metadata: { category: "isp" } },
+      { asn: 2200, metadata: { category: "education_research" } },
+      { asn: 9, metadata: { category: "government_admin" } },
       { asn: 7, metadata: {} },
       { asn: 8 },
     ]);
-    expect([...map]).toEqual([["24940", "hosting"], ["60653", "business"]]);
+    expect([...map]).toEqual([["3215", "isp"], ["2200", "education_research"]]);
     expect(unknown.size).toBe(0);
   });
 

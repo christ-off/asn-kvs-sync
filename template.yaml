@@ -14,8 +14,8 @@ Resources:
   AsnKeyValueStore:
     Type: AWS::CloudFront::KeyValueStore
     Properties:
-      Name: asn-categories
-      Comment: ASN -> category (isp, hosting, business, ...) for the traffic filter function
+      Name: asn-allowed-categories
+      Comment: ASNs the traffic filter function allows (isp, education_research); a missing key means block
 
   SyncLogGroup:
     Type: AWS::Logs::LogGroup

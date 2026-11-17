@@ -9,6 +9,8 @@ import {
 import { chunk } from "./diff.mjs";
 
 export const MAX_OPS_PER_UPDATE = 50;
+// The default page is 10 items; 50 is the maximum and makes listing 5x faster.
+export const LIST_PAGE_SIZE = 50;
 
 export function createClient() {
   return new CloudFrontKeyValueStoreClient({});
@@ -18,7 +20,7 @@ export async function listAll(client, kvsArn) {
   const items = new Map();
   let nextToken;
   do {
-    const page = await client.send(new ListKeysCommand({ KvsARN: kvsArn, NextToken: nextToken }));
+    const page = await client.send(new ListKeysCommand({ KvsARN: kvsArn, NextToken: nextToken, MaxResults: LIST_PAGE_SIZE }));
     for (const item of page.Items ?? []) items.set(item.Key, item.Value);
     nextToken = page.NextToken;
   } while (nextToken);

@@ -16,11 +16,6 @@ describe("computeDiff", () => {
     expect(computeDiff(m, new Map(m))).toEqual({ puts: [], deletes: [] });
   });
 
-  it("preserves manual overrides (never updated, never deleted)", () => {
-    const current = new Map([["1", "!h"], ["2", "!b"]]);
-    const desired = new Map([["1", "i"]]);
-    expect(computeDiff(current, desired)).toEqual({ puts: [], deletes: [] });
-  });
 });
 
 describe("checkGuardrail", () => {
@@ -37,11 +32,6 @@ describe("checkGuardrail", () => {
   it("accepts a source at 90% or more, and any source for an empty store", () => {
     expect(() => checkGuardrail(store(100), store(90))).not.toThrow();
     expect(() => checkGuardrail(new Map(), store(5))).not.toThrow();
-  });
-
-  it("ignores overrides when counting the store", () => {
-    const current = new Map([...store(10), ["x1", "!h"], ["x2", "!h"]]);
-    expect(() => checkGuardrail(current, store(9))).not.toThrow();
   });
 });
 
