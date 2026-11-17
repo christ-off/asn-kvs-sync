@@ -1,0 +1,60 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  ASN KVS sync - daily job that syncs the full ASN -> category list
+  into a CloudFront KeyValueStore read by the traffic filter function.
+
+Globals:
+  Function:
+    Runtime: nodejs22.x
+    Timeout: 300
+    MemorySize: 512
+
+Resources:
+  AsnKeyValueStore:
+    Type: AWS::CloudFront::KeyValueStore
+    Properties:
+      Name: asn-categories
+      Comment: ASN -> category (isp, hosting, business, ...) for the traffic filter function
+
+  SyncLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${SyncFunction}'
+      RetentionInDays: 30
+
+  # Own role: KeyValueStore write only, no website-bucket, logs or invalidation rights.
+  SyncFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: handler.handler
+      CodeUri: src/
+      Description: Sync the full ASN -> category list into the CloudFront KeyValueStore
+      Environment:
+        Variables:
+          KVS_ARN: !GetAtt AsnKeyValueStore.Arn
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - cloudfront-keyvaluestore:DescribeKeyValueStore
+                - cloudfront-keyvaluestore:ListKeys
+                - cloudfront-keyvaluestore:GetKey
+                - cloudfront-keyvaluestore:PutKey
+                - cloudfront-keyvaluestore:DeleteKey
+                - cloudfront-keyvaluestore:UpdateKeys
+              Resource: !GetAtt AsnKeyValueStore.Arn
+      Events:
+        DailySchedule:
+          Type: Schedule
+          Properties:
+            Schedule: cron(0 4 * * ? *)
+            Description: Sync the ASN list daily at 04:00 UTC
+
+Outputs:
+  KeyValueStoreArn:
+    Description: KeyValueStore ARN (to associate with the CloudFront Function)
+    Value: !GetAtt AsnKeyValueStore.Arn
+  FunctionName:
+    Description: Lambda function name (for manual invocation)
+    Value: !Ref SyncFunction
