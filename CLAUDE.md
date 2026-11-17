@@ -32,3 +32,4 @@ sam deploy --no-execute-changeset   # review the changeset before deploying
 - `src/diff.mjs` computes puts/deletes and the guardrail (abort if the source is empty or < 90% of the store's managed keys).
 - `src/kvs.mjs` lists the store and applies changes in `UpdateKeys` batches of ≤ 50, chaining ETags (sequential). The first load is ~2,300 batches, hence `Timeout: 900` and `MemorySize: 2048`.
 - **Manual overrides:** a store value starting with `!` (e.g. `!hosting`) is never updated or deleted by the sync. The CloudFront Function must strip the `!` when it reads the store (deferred function work).
+- **ESM bundle needs a `require` banner** (`Banner` in `template.yaml`): the SDK's CJS code calls `require("node:https")`, which fails at init with "Dynamic require … is not supported". To check a bundle, import it from a `.mjs` file in a Node 22 container (`node -e` has a global `require` and hides the bug).

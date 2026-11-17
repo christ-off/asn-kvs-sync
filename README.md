@@ -1,12 +1,50 @@
 # asn-kvs-sync
 
-Daily AWS SAM job (Node 22 Lambda) that syncs the full ASN → category list into a CloudFront KeyValueStore read by [`cloudfront-function-filter-traffic`](../cloudfront-function-filter-traffic/).
+Weekly AWS SAM job (Node 22 Lambda, Monday 04:00 UTC) that syncs the full ASN → category list from [`ipverse/as-metadata`](https://github.com/ipverse/as-metadata) (`as.json`, CC0) into a CloudFront KeyValueStore read by [`cloudfront-function-filter-traffic`](../cloudfront-function-filter-traffic/).
 
-**Status: scaffold only.** The stack (KeyValueStore, function, role, 04:00 UTC schedule) is defined, the handler is a placeholder. See `../ASN blocking — consolidated plan.md`.
+Each key is an ASN (`24940`), each value its category: `isp`, `hosting`, `business`, `education_research` or `government_admin`. ASNs without a category are not stored. A value starting with `!` (e.g. `!hosting`) is a manual override that the sync never touches.
+
+See `../ASN blocking — consolidated plan.md` for the plan and `CLAUDE.md` for the design.
+
+## Build and deploy
 
 ```bash
 npm install
 npm test
 sam build
-sam deploy --no-execute-changeset   # review first
+sam deploy --no-execute-changeset   # review the changeset first
+sam deploy
+```
+
+## Run it manually
+
+The first run loads about 115k keys in ~2,300 batches of 50, so it takes a while: use `--cli-read-timeout 0`.
+
+```bash
+STACK=asn-kvs-sync
+FUNCTION=$(sam list stack-outputs --stack-name $STACK --region eu-west-3 --output json | jq -r '.[] | select(.OutputKey=="FunctionName") | .OutputValue')
+
+aws lambda invoke \
+  --region eu-west-3 \
+  --cli-read-timeout 0 \
+  --function-name "$FUNCTION" \
+  /tmp/asn-kvs-sync-out.json && cat /tmp/asn-kvs-sync-out.json
+```
+
+The result is the summary `{ source, store, added, changed, removed, batches }`. A second run right after should report `added`, `changed` and `removed` all at 0. If the run fails (download error, or the guardrail aborting because the source has fewer than 90% of the store's keys), nothing is written and the previous content stays.
+
+Follow the logs:
+
+```bash
+aws logs tail "/aws/lambda/$FUNCTION" --region eu-west-3 --since 15m --follow
+```
+
+## Check the store
+
+```bash
+KVS=$(sam list stack-outputs --stack-name $STACK --region eu-west-3 --output json | jq -r '.[] | select(.OutputKey=="KeyValueStoreArn") | .OutputValue')
+
+aws cloudfront-keyvaluestore describe-key-value-store --kvs-arn "$KVS"   # ItemCount ≈ 115k, size ≈ 1.5 MB (limit 5 MB)
+aws cloudfront-keyvaluestore get-key --kvs-arn "$KVS" --key 24940        # hosting
+aws cloudfront-keyvaluestore get-key --kvs-arn "$KVS" --key 60653        # business
 ```

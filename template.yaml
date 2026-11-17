@@ -56,6 +56,9 @@ Resources:
         Format: esm
         Target: es2022
         Sourcemap: false
+        # CJS code inside the AWS SDK needs require(), which an ESM bundle lacks
+        Banner:
+          - js=import { createRequire } from 'module'; const require = createRequire(import.meta.url);
         EntryPoints:
           - src/handler.mjs
         OutExtension:
