@@ -8,7 +8,7 @@ AWS SAM application: a weekly Lambda that syncs the ASNs the traffic filter allo
 
 The job only populates the KVS. It does not read CloudFront logs, classify observed ASNs, propose block lists or decide what to do with an ASN. The only policy it encodes is which categories are stored (the allowed ones); the allowlist of other ASNs and the response live in the function.
 
-Working plan: `../ASN blocking — consolidated plan.md` (Phases B, K and the KVS part of D are active; read it first). Do not assume anything the plan marks as not started exists.
+Working plan: `docs/ASN blocking — consolidated plan.md` (Phases B, K and the KVS part of D are active; read it first). Do not assume anything the plan marks as not started exists.
 
 ## Boundaries
 

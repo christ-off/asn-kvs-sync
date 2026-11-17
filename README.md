@@ -4,7 +4,7 @@ Weekly AWS SAM job (Node 22 Lambda, Monday 04:00 UTC) that syncs the full ASN �
 
 Only the ASNs the filter allows are stored (`isp` and `education_research`, ~34.4k keys): each key is an ASN (`3215`), each value its category. A missing key means the function blocks. The store is fully managed by the sync (keys not in the source are deleted).
 
-See `../ASN blocking — consolidated plan.md` for the plan and `CLAUDE.md` for the design.
+See `docs/ASN blocking — consolidated plan.md` for the plan and `CLAUDE.md` for the design.
 
 ## Build and deploy
 
