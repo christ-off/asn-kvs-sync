@@ -55,7 +55,7 @@ Block scrapers from hosting/datacenter ASNs on the static blog (S3 + CloudFront)
 
 - Nov 17: `blog-analytics` rolled back to a single function (stack `daily-statistics`, redeployed). New project `asn-kvs-sync` (repo, stack in `eu-west-3`, KVS, weekly sync Lambda with its own role) deployed; first load of the KVS in progress (see Phase K).
 
-**Not started:** the function change (read the KVS), the effect measurement, the policy per category.
+**Done Nov 18:** the function change (reads the KVS, see the policy section below; implemented in `function.js`, tests updated, deploy workflow associates the KVS; not yet pushed or deployed). **Not started:** the effect measurement.
 
 **First-pass findings (too short to conclude, validates the method)**
 
@@ -171,6 +171,29 @@ Each phase ends with a checkpoint; do not start the next until its validation pa
 - [ ] Update the workspace `CLAUDE.md` (logs now contain the ASN).
 - [ ] Optionally record the origin request policy and distribution changes somewhere, since the distribution is outside IaC.
 
+### Function policy — decided Nov 18, 2026 (replaces the "deferred" policy direction in section 1)
+
+Order of checks in `function.js` (diagram and rules in `cloudfront-function-filter-traffic/README.md`, section "Planned filtering sequence"): cheap URI/UA checks first, then pass-through steps that skip the lookup, then the ASN blocklist, then a single `kvs.exists(asn)` as the last step.
+
+1. No user agent, undecodable URI → `404`.
+2. Security scan (traversal, dotfile, php/wp/env URIs, bad Chrome UA) → `404`.
+3. Bad-UA regex (`blockedBotRegex`) → `404`.
+4. `.json`/`.js` not allowlisted, cover without referer → `404` (before any "pass", so whitelisted ASNs cannot bypass them).
+5. ASN in the function whitelist → pass. Hosted-software / feed-reader UA whitelist → pass.
+6. ASN in the function blocklist (`blockedAsnRegex` kept) → `404`.
+7. No ASN header → pass (fail open).
+8. KV: key present → pass; missing → `404`; KV error → pass (fail open).
+
+**Google is excluded on purpose:** blocking Google (indexing, FeedFetcher, image fetcher) is a voluntary decision to exclude Google tools. Googlebot-family UAs stay in `blockedBotRegex` and AS15169 goes on the function's ASN blocklist. This supersedes the "never block verified Googlebot/Bingbot ASNs" risk note in section 4 as far as Google is concerned (Bingbot is still allowed).
+
+Simplifications decided the same day:
+
+- Remove the `/backup.zip` allowlist and the fake responses (deny-all `robots.txt`, empty Atom feed). Every block is a plain `404`.
+- Feeds (`/feed.xml`, `/rss.xml`) are ordinary requests: no ASN exemption, no `feedfetcher-google` exception. Feed readers hosted outside the KV rely on the UA whitelist; the analysis of `logs.db` (Nov 11–18) and the token list are in the function README ("Feed readers under the new sequence").
+- Bad-UA regex kept: it saves KV reads and catches scrapers on ISP ASNs. Size is not an issue: `function.js` ends around 8 KB of 10 KB. If it ever is, the bad-UA step is the one to drop.
+
+Implementation checklist (Phase D; code, tests, README and the deploy workflow done Nov 18, not yet pushed; remaining: set the `CLOUDFRONT_KVS_ARN` secret, check the deploy IAM permission to associate the store, check the `CloudFront-Viewer-ASN` origin request policy, then deploy and watch `analyze-logs`; a log-only release is not possible because viewer-request functions cannot write logs, so the first deploy enforces): (KV categories of the feed-reader ASNs checked Nov 18: see the function README) ASN whitelist decided Nov 18: 60653 (Feedly, used only by Feedly, KV category `business`), 199064 (Qwant), 714 (Apple); 8075 is not whitelisted; 15169 (Google) is added to the function's ASN blocklist; implement in `function.js` (ES5.1 + allowlist, `async` handler, `exists` in `try/catch`); update tests (mock the `cloudfront` module) and the README anchors; associate the KVS with the function in the GitHub Action; add the `CloudFront-Viewer-ASN` origin request policy if missing; release 1 log-only, release 2 enforce.
+
 ## 4. Open points and risks
 
 | Item | Status |
@@ -188,7 +211,7 @@ Each phase ends with a checkpoint; do not start the next until its validation pa
 **Risks to keep in mind**
 
 - *False positives:* iCloud Private Relay (Akamai/Cloudflare ASNs) and corporate VPNs (Zscaler) are real readers. Consider a 403/404 page with a contact link rather than silent rejection.
-- *Search ranking:* never block verified Googlebot/Bingbot ASNs.
+- *Search ranking:* Google is excluded on purpose (Nov 18 decision: Googlebot, FeedFetcher, image fetcher and AS15169 are blocked, so the blog is not indexed by Google). Bingbot stays allowed by UA token (`bingbot/`); AS8075 (Microsoft) is blocklisted and never whitelisted by ASN because it hosts other tools we do not want.
 - *Silent drift:* the distribution is not in IaC, so log fields and policies can change outside the templates; keep the drift checks (`IN_SYNC`) on the two stacks.
 - *Cost:* expected ≈ $0 (KVS reads within the free tier, few KVS writes batched weekly).
 

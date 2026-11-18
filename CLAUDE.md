@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-AWS SAM application: a weekly Lambda that syncs the ASNs the traffic filter allows (categories `isp` and `education_research` from `ipverse/as-metadata` `as.json`, CC0; ~34.4k keys, ~0.5 MB) into a CloudFront KeyValueStore. The CloudFront Function in `../cloudfront-function-filter-traffic/` will read it with one `kvs.get(asn)` per request (deferred): a key present means allowed, a missing key means block. Whitelisted non-ISP ASNs belong in the function code, not in the store.
+AWS SAM application: a weekly Lambda that syncs the ASNs the traffic filter allows (categories `isp` and `education_research` from `ipverse/as-metadata` `as.json`, CC0; ~34.4k keys, ~0.5 MB) into a CloudFront KeyValueStore. The CloudFront Function in `../cloudfront-function-filter-traffic/` reads it with one `kvs.exists(asn)` as its last check (implemented Nov 18, not yet deployed): a key present means allowed, a missing key means block. Whitelisted non-ISP ASNs belong in the function code, not in the store.
 
 The job only populates the KVS. It does not read CloudFront logs, classify observed ASNs, propose block lists or decide what to do with an ASN. The only policy it encodes is which categories are stored (the allowed ones); the allowlist of other ASNs and the response live in the function.
 
