@@ -1,7 +1,7 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: >
-  ASN KVS sync - daily job that syncs the full ASN -> category list
+  ASN KVS sync - weekly job that syncs the full ASN -> category list
   into a CloudFront KeyValueStore read by the traffic filter function.
 
 Globals:

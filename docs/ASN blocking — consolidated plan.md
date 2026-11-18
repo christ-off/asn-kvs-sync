@@ -173,7 +173,7 @@ Each phase ends with a checkpoint; do not start the next until its validation pa
 
 ### Function policy — decided Nov 18, 2026 (replaces the "deferred" policy direction in section 1)
 
-Order of checks in `function.js` (diagram and rules in `cloudfront-function-filter-traffic/README.md`, section "Planned filtering sequence"): cheap URI/UA checks first, then pass-through steps that skip the lookup, then the ASN blocklist, then a single `kvs.exists(asn)` as the last step.
+Order of checks in `function.js` (diagram and rules in `cloudfront-function-filter-traffic/README.md`, section "What the function does"): cheap URI/UA checks first, then pass-through steps that skip the lookup, then the ASN blocklist, then a single `kvs.exists(asn)` as the last step.
 
 1. No user agent, undecodable URI → `404`.
 2. Security scan (traversal, dotfile, php/wp/env URIs, bad Chrome UA) → `404`.
