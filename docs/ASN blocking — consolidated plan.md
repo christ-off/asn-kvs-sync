@@ -55,7 +55,7 @@ Block scrapers from hosting/datacenter ASNs on the static blog (S3 + CloudFront)
 
 - Nov 17: `blog-analytics` rolled back to a single function (stack `daily-statistics`, redeployed). New project `asn-kvs-sync` (repo, stack in `eu-west-3`, KVS, weekly sync Lambda with its own role) deployed; first load of the KVS in progress (see Phase K).
 
-**Done Nov 18:** the function change (reads the KVS, see the policy section below; implemented in `function.js`, tests updated, deploy workflow associates the KVS; not yet pushed or deployed). **Not started:** the effect measurement.
+**Done Nov 18:** the function change (reads the KVS, see the policy section below; implemented in `function.js`, tests updated, deploy workflow associates the KVS; live since Nov 18, run `44364157396`). **Not started:** the effect measurement.
 
 **First-pass findings (too short to conclude, validates the method)**
 
@@ -134,16 +134,16 @@ Each phase ends with a checkpoint; do not start the next until its validation pa
 - Run against real logs for several days; a human reviews each proposed list and flags false positives. Target: zero false positives in the reviewed window.
 - Confirm the output is not publicly readable.
 
-### Phase D — KVS and function (step 6) — *KVS creation and write path are active (see Phase K); the function change is deferred*
+### Phase D — KVS and function (step 6) — *KVS creation and write path are active (see Phase K); the function change is done and live since Nov 18*
 
-- [ ] Verify whether Node KVS writes need `@aws-sdk/signature-v4-crt` (SigV4a). If yes, accept the end of "no production dependencies" or isolate it in the ASN function only.
-- [ ] Create the KVS in the SAM template; expose its ARN.
-- [ ] Add the origin request policy with `CloudFront-Viewer-ASN` on the behaviour (manual change to the existing distribution; record it in the docs).
-- [ ] Decide the merge rules: allowlist wins over everything; manual regex and KVS list are both block layers; document the order in the function README (keep `// rationale: README.md#anchor` comments in sync).
-- [ ] Decide the response code for KVS matches (the function returns 404 today; the guidance says 403).
-- [ ] Update `function.js` within ES5.1 + the CloudFront allowlist (no `?.`, `??`, destructuring, `Map`/`Set`, …) and under 10 KB; fail open on KVS errors.
-- [ ] Pass the KVS ARN to the project's GitHub Action and associate it with the function.
-- [ ] Release 1, **log-only mode**: the function records the would-be block (e.g. a header or distinct log marker) without blocking. Release 2: enforce.
+- [x] Verify whether Node KVS writes need `@aws-sdk/signature-v4-crt` (SigV4a). If yes, accept the end of "no production dependencies" or isolate it in the ASN function only. (Nov 17: pure-JS `@aws-sdk/signature-v4a` works, no CRT.)
+- [x] Create the KVS in the SAM template; expose its ARN. (Nov 17: output `KeyValueStoreArn`.)
+- [x] Add the origin request policy with `CloudFront-Viewer-ASN` on the behaviour (manual change to the existing distribution; record it in the docs). (Verified Nov 18: custom policy `Viewer-ASN` is attached to the only behaviour; setup steps are in the function README, `asn-header-setup`.)
+- [x] Decide the merge rules: allowlist wins over everything; manual regex and KVS list are both block layers; document the order in the function README (keep `// rationale: README.md#anchor` comments in sync). (Nov 18: see the function policy section below; the function README has the order.)
+- [x] Decide the response code for KVS matches (the function returns 404 today; the guidance says 403). (Nov 18: plain `404` everywhere.)
+- [x] Update `function.js` within ES5.1 + the CloudFront allowlist (no `?.`, `??`, destructuring, `Map`/`Set`, …) and under 10 KB; fail open on KVS errors. (Nov 18: 7.4 KB, 52 tests.)
+- [x] Pass the KVS ARN to the project's GitHub Action and associate it with the function. (Nov 18: secret `CLOUDFRONT_KVS_ARN`, `KeyValueStoreAssociations` in `deploy.yml`; deployed, live function has the association.)
+- [x] ~~Release 1, log-only mode~~ skipped: a viewer-request function cannot write logs and CloudFront standard logs do not carry a custom request header, so there is no way to observe would-be blocks. Instead: `aws cloudfront test-function` on the DEVELOPMENT stage (16/16 cases OK, Nov 18), then enforced directly (Nov 18, run `44364157396`).
 
 **Validation:**
 
@@ -166,9 +166,9 @@ Each phase ends with a checkpoint; do not start the next until its validation pa
 
 ### Housekeeping
 
-- [ ] Push the unpushed commits in `blog-analytics` and `analyze-logs`.
+- [x] Push the unpushed commits in `blog-analytics` and `analyze-logs`. (Nov 18, with the RTK removal.)
 - [ ] Decide where the workspace-level documents live: their own repo in `blog-filtering/`, or only these files in the parent repo `/Users/christophe/Workspaces`. Then commit them (including this file).
-- [ ] Update the workspace `CLAUDE.md` (logs now contain the ASN).
+- [x] Update the workspace `CLAUDE.md` (logs now contain the ASN; the function now reads the KVS, Nov 18).
 - [ ] Optionally record the origin request policy and distribution changes somewhere, since the distribution is outside IaC.
 
 ### Function policy — decided Nov 18, 2026 (replaces the "deferred" policy direction in section 1)
@@ -192,7 +192,7 @@ Simplifications decided the same day:
 - Feeds (`/feed.xml`, `/rss.xml`) are ordinary requests: no ASN exemption, no `feedfetcher-google` exception. Feed readers hosted outside the KV rely on the UA whitelist; the analysis of `logs.db` (Nov 11–18) and the token list are in the function README ("Feed readers under the new sequence").
 - Bad-UA regex kept: it saves KV reads and catches scrapers on ISP ASNs. Size is not an issue: `function.js` ends around 8 KB of 10 KB. If it ever is, the bad-UA step is the one to drop.
 
-Implementation checklist (Phase D; code, tests, README and the deploy workflow done Nov 18, not yet pushed; remaining: set the `CLOUDFRONT_KVS_ARN` secret, check the deploy IAM permission to associate the store, check the `CloudFront-Viewer-ASN` origin request policy, then deploy and watch `analyze-logs`; a log-only release is not possible because viewer-request functions cannot write logs, so the first deploy enforces): (KV categories of the feed-reader ASNs checked Nov 18: see the function README) ASN whitelist decided Nov 18: 60653 (Feedly, used only by Feedly, KV category `business`), 199064 (Qwant), 714 (Apple); 8075 is not whitelisted; 15169 (Google) is added to the function's ASN blocklist; implement in `function.js` (ES5.1 + allowlist, `async` handler, `exists` in `try/catch`); update tests (mock the `cloudfront` module) and the README anchors; associate the KVS with the function in the GitHub Action; add the `CloudFront-Viewer-ASN` origin request policy if missing; release 1 log-only, release 2 enforce.
+Implementation checklist (Phase D; all done and live Nov 18; remaining: watch `analyze-logs` for blocked real readers, which is Phase E): (KV categories of the feed-reader ASNs checked Nov 18: see the function README) ASN whitelist decided Nov 18: 60653 (Feedly, used only by Feedly, KV category `business`), 199064 (Qwant), 714 (Apple); 8075 is not whitelisted; 15169 (Google) is added to the function's ASN blocklist; implement in `function.js` (ES5.1 + allowlist, `async` handler, `exists` in `try/catch`); update tests (mock the `cloudfront` module) and the README anchors; associate the KVS with the function in the GitHub Action; add the `CloudFront-Viewer-ASN` origin request policy if missing; release 1 log-only, release 2 enforce.
 
 ## 4. Open points and risks
 
@@ -203,9 +203,9 @@ Implementation checklist (Phase D; code, tests, README and the deploy workflow d
 | KVS bulk-write mechanics (UpdateKeys 50 ops per call and payload limit; import-from-S3 only at store creation?; update rate limits) | Partly resolved Nov 17: 50 ops per `UpdateKeys` with chained ETags works; throughput ~105–130 keys/s, so the first load needs more than one 900 s run; rate limits not hit |
 | ASN category source: licence, update cadence, behaviour when the download fails | Resolved Nov 17: `ipverse/as-metadata`, CC0, updated daily; a failed download aborts before any write |
 | Policy per category (`business`, unknown, browsers on hosting, Chinese ISPs), UA whitelist, `feed.xml` exemption | Deferred; direction recorded in section 1 |
-| Merge rules (manual regex / allowlist / KVS) | Allowlist wins; rest to define (Phase D) |
-| Response code for KVS matches | 403 (guidance) vs 404 (current function) |
-| Requests with no ASN | Not investigated (Phase A) |
+| Merge rules (manual regex / allowlist / KVS) | Resolved Nov 18: whitelist and hosted-software UA first, then manual blocklist, then KVS (missing = block); see the function policy section |
+| Response code for KVS matches | Resolved Nov 18: `404` |
+| Requests with no ASN | Function fails open (Nov 18); cause still not investigated (Phase A) |
 | Sample size | One day cannot tell scanners from one-time visits (Phase A) |
 
 **Risks to keep in mind**
